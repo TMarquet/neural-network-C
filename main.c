@@ -3,6 +3,7 @@
 #include <string.h>
 #include <time.h>
 #include <math.h>
+#include <byteswap.h>
 #define FILENAME "neural_network_parameters.txt"
 
 /*
@@ -61,49 +62,6 @@ Network* initNetwork(int num_layers, int sizes[]){
 	return network;
 }
 
-// Squishification function
-double sigmoid(double z){
-
-	return 1.0 / (1.0 + exp(-z));
-}
-
-// Forward propagate, retrieve output from input
-double* feedForward(Network* network, double* input){
-
-	int size_from, size_to;
-	double* activation_from;
-	double* activation_to;
-
-	for(int i = 0; i < network->num_layers-1; i++){
-
-		size_from = network->sizes[i];
-		size_to = network->sizes[i+1];
-
-		if (i == 0){
-			activation_from = (double*)malloc(size_from*sizeof(double));
-			memcpy(activation_from, input, size_from*sizeof(double));
-			activation_to = (double*)malloc(size_to*sizeof(double));
-		}
-		else{
-			activation_from = (double*)realloc(activation_from, size_from*sizeof(double));
-			memcpy(activation_from, activation_to, size_from*sizeof(double));
-			activation_to = (double*)realloc(activation_to, size_to*sizeof(double));
-		}
-
-		for(int j = 0; j < size_to; j++){
-			activation_to[j] = 0;
-
-			for(int k = 0; k < size_from; k++)
-				activation_to[j] += network->weights[i][j][k] * activation_from[k];
-
-			activation_to[j] += network->biases[i+1][j];
-			activation_to[j] = sigmoid(activation_to[j]);
-		}
-	}
-	free(activation_from);
-	return activation_to;
-}
-
 // Save parameters of NN to file
 void saveNetwork(Network* network, char* filename){
 
@@ -146,7 +104,7 @@ void saveNetwork(Network* network, char* filename){
 	return;
 }
 
-// Load parameters to NN
+// Allocate memory and load parameters to NN
 Network* loadNetwork(Network* network, char* filename){
 
 	// Open file
@@ -197,12 +155,226 @@ Network* loadNetwork(Network* network, char* filename){
 	return network;
 }
 
+// Squishification function
+double sigmoid(double z){
+
+	return 1.0 / (1.0 + exp(-z));
+}
+
+// Forward propagate, retrieve output from input
+double* feedForward(Network* network, double* input){
+
+	int size_from, size_to;
+	double* activation_from;
+	double* activation_to;
+
+	for(int i = 0; i < network->num_layers-1; i++){
+
+		size_from = network->sizes[i];
+		size_to = network->sizes[i+1];
+
+		if (i == 0){
+			activation_from = (double*)malloc(size_from*sizeof(double));
+			memcpy(activation_from, input, size_from*sizeof(double));
+			activation_to = (double*)malloc(size_to*sizeof(double));
+		}
+		else{
+			activation_from = (double*)realloc(activation_from, size_from*sizeof(double));
+			memcpy(activation_from, activation_to, size_from*sizeof(double));
+			activation_to = (double*)realloc(activation_to, size_to*sizeof(double));
+		}
+
+		for(int j = 0; j < size_to; j++){
+			activation_to[j] = 0;
+
+			for(int k = 0; k < size_from; k++)
+				activation_to[j] += network->weights[i][j][k] * activation_from[k];
+
+			activation_to[j] += network->biases[i+1][j];
+			activation_to[j] = sigmoid(activation_to[j]);
+		}
+	}
+	free(activation_from);
+	return activation_to;
+}
+
+// Determine the gradient of the NN
+void backPropagation(Network* network, double* input, double* output,
+					double*** delta_nabla_biases, double**** delta_nabla_weights){
+
+	for(int i = 1; i < network->num_layers; i++)
+		for(int j = 0; j < network->sizes[i]; j++)
+			delta_nabla_biases[0][i][j] = 0;
+	
+	for(int i = 0; i < network->num_layers-1; i++)
+		for(int j = 0; j < network->sizes[i+1]; j++)
+			for(int k = 0; k < network->sizes[i]; k++)
+				delta_nabla_weights[0][i][j][k] = 0;
+
+	return;
+}
+
+/*
+CONSIDER PREALLOCATING MEMORY FOR ALL THE NABLAS AND DELTAS IN THE STRUCT AS TO AVOID
+HAVING TO CALLOC AND MALLOC AND FREE EVERY TIME
+*/
+
+// Applying SGD for the mini batch
+void update_mini_batch(Network* network, double** mini_batch_input, 
+					double** mini_batch_output, int mini_batch_size,
+					double learning_rate){
+
+	double** nabla_biases;
+	double*** nabla_weights;
+	double** delta_nabla_biases;
+	double*** delta_nabla_weights;
+
+	// Callocate memory
+	nabla_biases = (double**)calloc(network->num_layers, sizeof(double*));
+	for(int i = 1; i < network->num_layers; i++)
+		nabla_biases[i] = (double*)calloc(network->sizes[i], sizeof(double));
+
+	nabla_weights = (double***)calloc(network->num_layers, sizeof(double**));
+	for(int i = 0; i < network->num_layers-1; i++){
+		nabla_weights[i] = (double**)calloc(network->sizes[i+1], sizeof(double*));
+		for(int j = 0; j < network->sizes[i+1]; j++)
+			nabla_weights[i][j] = (double*)calloc(network->sizes[i], sizeof(double));
+	}
+
+	// Malloc memory
+	delta_nabla_biases = (double**)malloc(network->num_layers*sizeof(double*));
+	for(int i = 1; i < network->num_layers; i++)
+		delta_nabla_biases[i] = (double*)malloc(network->sizes[i]*sizeof(double));
+
+	delta_nabla_weights = (double***)malloc(network->num_layers*sizeof(double**));
+	for(int i = 0; i < network->num_layers-1; i++){
+		delta_nabla_weights[i] = (double**)malloc(network->sizes[i+1]*sizeof(double*));
+		for(int j = 0; j < network->sizes[i+1]; j++)
+			delta_nabla_weights[i][j] = (double*)malloc(network->sizes[i]*sizeof(double));
+	}
+
+	// Increment nabla for each vector in mini_batch
+	for(int a = 0; a < mini_batch_size; a++){
+
+		backPropagation(network, mini_batch_input[a], mini_batch_output[a], &delta_nabla_biases, &delta_nabla_weights);
+
+		for(int i = 1; i < network->num_layers; i++)
+			for(int j = 0; j < network->sizes[i]; j++)
+				nabla_biases[i][j] += delta_nabla_biases[i][j];
+		
+		for(int i = 0; i < network->num_layers-1; i++)
+			for(int j = 0; j < network->sizes[i+1]; j++)
+				for(int k = 0; k < network->sizes[i]; k++)
+					nabla_weights[i][j][k] += delta_nabla_weights[i][j][k];
+	}
+
+	// Update weights and biases from total nabla_biases and total nabla_weights
+	for(int i = 1; i < network->num_layers; i++)
+		for(int j = 0; j < network->sizes[i]; j++)
+			network->biases[i][j] -= delta_nabla_biases[i][j] * learning_rate / mini_batch_size;
+	
+	for(int i = 0; i < network->num_layers-1; i++)
+		for(int j = 0; j < network->sizes[i+1]; j++)
+			for(int k = 0; k < network->sizes[i]; k++)
+				network->weights[i][j][k] -= delta_nabla_weights[i][j][k] * learning_rate / mini_batch_size;
+
+	// Free the memory
+	for(int i = 1; i < network->num_layers; i++)
+		free(nabla_biases[i]);
+	free(nabla_biases);
+
+	for(int i = 0; i < network->num_layers-1; i++){
+		for(int j = 0; j < network->sizes[i+1]; j++)
+			free(nabla_weights[i][j]);
+		free(nabla_weights[i]);
+	}
+	free(nabla_weights);
+
+	for(int i = 1; i < network->num_layers; i++)
+		free(delta_nabla_biases[i]);
+	free(delta_nabla_biases);
+
+	for(int i = 0; i < network->num_layers-1; i++){
+		for(int j = 0; j < network->sizes[i+1]; j++)
+			free(delta_nabla_weights[i][j]);
+		free(delta_nabla_weights[i]);
+	}
+	free(delta_nabla_weights);
+
+	return;
+}
+
+/*
+CONSIDER A REAL SHUFFLE FOR THE MINI BATCHES
+IMPLEMENT OPTIONAL TEST DATA AT END OF EVERY EPOCH
+*/
+
+/*
+MADE CODE MORE C LIKE
+LESS LIKE PYTHON
+PLEASE
+*/
+
+// Training algorithm
+void stochasticGradientDescent(Network* network, double** training_input, 
+					double** training_output, int training_size, int mini_batch_size, 
+					int epochs, double learning_rate){
+
+	if (training_size % mini_batch_size != 0){
+		printf("Mini batch size must evenly divide the training set size.\n");
+		return;
+	}
+
+	// Allocate mini_batch memory
+	double** mini_batch_input = (double**)malloc(mini_batch_size*sizeof(double*));
+	double** mini_batch_output = (double**)malloc(mini_batch_size*sizeof(double*));
+
+	for(int i = 0; i < mini_batch_size; i++){
+		mini_batch_input[i] = (double*)malloc(network->sizes[0]*sizeof(double));
+		mini_batch_output[i] = (double*)malloc(network->sizes[network->num_layers-1]*sizeof(double));
+	}
+
+	// Repeat process epoch times
+	for(int i = 0; i < epochs; i++){
+
+		int index = rand() % training_size;
+
+		// Number of minibatches per epoch
+		for(int j = 0; j < training_size/mini_batch_size; j++){
+
+			// Size of minibatch
+			for(int k = 0; k < mini_batch_size; k++){
+
+				if (index == training_size)
+					index = 0;
+
+				// Setup minibatches
+				memcpy(mini_batch_input[k], training_input[index], network->sizes[0]*sizeof(double));
+				memcpy(mini_batch_output[k], training_output[index], network->sizes[network->num_layers-1]*sizeof(double));
+				index++;
+				
+				// Apply the SGD
+				update_mini_batch(network, mini_batch_input, mini_batch_output, mini_batch_size, learning_rate);
+			}
+		}
+		printf("Epoch %d complete.\n", i+1);
+	}
+
+	// Free mini_batch memory
+	for(int i = 0; i < mini_batch_size; i++){
+		free(mini_batch_input[i]);
+		free(mini_batch_output[i]);
+	}
+	free(mini_batch_input);
+	free(mini_batch_output);
+
+	return;
+}
+
 // The main attraction
 int main(){
 
 	/*
-	srand(time(NULL));
-
 	int num_layers = 3;
 	int sizes[] = {4, 3, 2};
 
@@ -210,128 +382,53 @@ int main(){
 	saveNetwork(network, FILENAME);
 	*/
 
-	Network* network = loadNetwork(network, FILENAME);
+	/*
 	double input_vector[4] = {4.0, 3.0, 2.5, 3.4};
 	double* output = feedForward(network, input_vector);
 
+	printf("Final layer activation values:\n");
 	for(int i = 0; i < network->sizes[network->num_layers-1]; i++)
-		printf("Value: %lf\n", output[i]);
+		printf("%d: %lf\n", i+1, output[i]);
+
+	free(output);
+	*/
+
+	srand(time(NULL));
+
+	Network* network = loadNetwork(network, FILENAME);
+
+	int training_size = 400;
+	int mini_batch_size = 20;
+	int epochs = 30;
+	double learning_rate = 4.0;
+
+	double** training_input = (double**)malloc(training_size*sizeof(double*));
+	for(int i = 0; i < training_size; i++){
+		training_input[i] = (double*)malloc(network->sizes[0]*sizeof(double));
+		for(int j = 0; j < network->sizes[0]; j++)
+			training_input[i][j] = i+1;
+	}
+
+	double** training_output = (double**)malloc(training_size*sizeof(double*));
+	for(int i = 0; i < training_size; i++){
+		training_output[i] = (double*)malloc(network->sizes[network->num_layers-1]*sizeof(double));
+		for(int j = 0; j < network->sizes[network->num_layers-1]; j++)
+			training_output[i][j] = i+1;
+	}
+
+	stochasticGradientDescent(network, training_input, training_output, 
+				training_size, mini_batch_size, epochs, learning_rate);
+
+	for(int i = 0; i < training_size; i++){
+		free(training_input[i]);
+		free(training_output[i]);
+	}
+	free(training_input);
+	free(training_output);
+	free(network);
 
 	return 0;
 }
-
-
-
-
-
-
-/*
-network.py
-~~~~~~~~~~
-
-
-
-class Network(object):
-
-    def SGD(self, training_data, epochs, mini_batch_size, eta,
-            test_data=None):
-        """Train the neural network using mini-batch stochastic
-        gradient descent.  The ``training_data`` is a list of tuples
-        ``(x, y)`` representing the training inputs and the desired
-        outputs.  The other non-optional parameters are
-        self-explanatory.  If ``test_data`` is provided then the
-        network will be evaluated against the test data after each
-        epoch, and partial progress printed out.  This is useful for
-        tracking progress, but slows things down substantially."""
-        if test_data: n_test = len(test_data)
-        n = len(training_data)
-        for j in xrange(epochs):
-            random.shuffle(training_data)
-            mini_batches = [
-                training_data[k:k+mini_batch_size]
-                for k in xrange(0, n, mini_batch_size)]
-            for mini_batch in mini_batches:
-                self.update_mini_batch(mini_batch, eta)
-            if test_data:
-                print "Epoch {0}: {1} / {2}".format(
-                    j, self.evaluate(test_data), n_test)
-            else:
-                print "Epoch {0} complete".format(j)
-
-    def update_mini_batch(self, mini_batch, eta):
-        """Update the network's weights and biases by applying
-        gradient descent using backpropagation to a single mini batch.
-        The ``mini_batch`` is a list of tuples ``(x, y)``, and ``eta``
-        is the learning rate."""
-        nabla_b = [np.zeros(b.shape) for b in self.biases]
-        nabla_w = [np.zeros(w.shape) for w in self.weights]
-        for x, y in mini_batch:
-            delta_nabla_b, delta_nabla_w = self.backprop(x, y)
-            nabla_b = [nb+dnb for nb, dnb in zip(nabla_b, delta_nabla_b)]
-            nabla_w = [nw+dnw for nw, dnw in zip(nabla_w, delta_nabla_w)]
-        self.weights = [w-(eta/len(mini_batch))*nw
-                        for w, nw in zip(self.weights, nabla_w)]
-        self.biases = [b-(eta/len(mini_batch))*nb
-                       for b, nb in zip(self.biases, nabla_b)]
-
-    def backprop(self, x, y):
-        """Return a tuple ``(nabla_b, nabla_w)`` representing the
-        gradient for the cost function C_x.  ``nabla_b`` and
-        ``nabla_w`` are layer-by-layer lists of numpy arrays, similar
-        to ``self.biases`` and ``self.weights``."""
-        nabla_b = [np.zeros(b.shape) for b in self.biases]
-        nabla_w = [np.zeros(w.shape) for w in self.weights]
-        # feedforward
-        activation = x
-        activations = [x] # list to store all the activations, layer by layer
-        zs = [] # list to store all the z vectors, layer by layer
-        for b, w in zip(self.biases, self.weights):
-            z = np.dot(w, activation)+b
-            zs.append(z)
-            activation = sigmoid(z)
-            activations.append(activation)
-        # backward pass
-        delta = self.cost_derivative(activations[-1], y) * \
-            sigmoid_prime(zs[-1])
-        nabla_b[-1] = delta
-        nabla_w[-1] = np.dot(delta, activations[-2].transpose())
-        # Note that the variable l in the loop below is used a little
-        # differently to the notation in Chapter 2 of the book.  Here,
-        # l = 1 means the last layer of neurons, l = 2 is the
-        # second-last layer, and so on.  It's a renumbering of the
-        # scheme in the book, used here to take advantage of the fact
-        # that Python can use negative indices in lists.
-        for l in xrange(2, self.num_layers):
-            z = zs[-l]
-            sp = sigmoid_prime(z)
-            delta = np.dot(self.weights[-l+1].transpose(), delta) * sp
-            nabla_b[-l] = delta
-            nabla_w[-l] = np.dot(delta, activations[-l-1].transpose())
-        return (nabla_b, nabla_w)
-
-    def evaluate(self, test_data):
-        """Return the number of test inputs for which the neural
-        network outputs the correct result. Note that the neural
-        network's output is assumed to be the index of whichever
-        neuron in the final layer has the highest activation."""
-        test_results = [(np.argmax(self.feedforward(x)), y)
-                        for (x, y) in test_data]
-        return sum(int(x == y) for (x, y) in test_results)
-
-    def cost_derivative(self, output_activations, y):
-        """Return the vector of partial derivatives \partial C_x /
-        \partial a for the output activations."""
-        return (output_activations-y)
-
-
-def sigmoid_prime(z):
-    """Derivative of the sigmoid function."""
-    return sigmoid(z)*(1-sigmoid(z))
-
-*/
-
-
-
 
 
 // MY FUNCTIONS THAT AREN'T BEING USED
@@ -371,5 +468,20 @@ double* vecVecSum(double* vector_1, double* vector_2, int dim_A){
 		sum[i] = vector_1[i] + vector_2[i];
 	
 	return sum;
+}
+*/
+
+
+/*
+FILE* images = fopen("train-images-idx3-ubyte.gz", "rb");
+if (!images){
+	perror("Could not open the images\n");
+	return -1;
+}
+
+FILE* labels = fopen("train-labels-idx1-ubyte.gz", "rb");
+if (!labels){
+	perror("Could not open the labels\n");
+	return -1;
 }
 */
