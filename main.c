@@ -1,7 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
 #include <math.h>
+#define FILENAME "neural_network_parameters.txt"
 
 /*
 Reference: http://neuralnetworksanddeeplearning.com/chap1.html
@@ -27,8 +29,6 @@ double randFloat(){
 // Allocate memory and initialize random parameters in NN
 Network* initNetwork(int num_layers, int sizes[]){
 
-	int i, j, k;
-
 	// Allocate memory for struct
 	Network* network = (Network*)malloc(sizeof(Network));
 
@@ -37,24 +37,24 @@ Network* initNetwork(int num_layers, int sizes[]){
 
 	// Allocate memory for size array, read values
 	network->sizes = (int*)malloc(num_layers*sizeof(int));
-	for(i = 0; i < num_layers; i++)
+	for(int i = 0; i < num_layers; i++)
 		network->sizes[i] = sizes[i];
 
 	// Allocate memory for biases, fill with random values
 	network->biases = (double**)malloc(num_layers*sizeof(double*));
-	for(i = 1; i < num_layers; i++){
+	for(int i = 1; i < num_layers; i++){
 		network->biases[i] = (double*)malloc(sizes[i]*sizeof(double));
-		for(j = 0; j < sizes[i]; j++)
+		for(int j = 0; j < sizes[i]; j++)
 			network->biases[i][j] = randFloat();
 	}
 
 	// Allocate memory for weights, fill with random values
 	network->weights = (double***)malloc(num_layers*sizeof(double**));
-	for(i = 0; i < num_layers-1; i++){
+	for(int i = 0; i < num_layers-1; i++){
 		network->weights[i] = (double**)malloc(sizes[i+1]*sizeof(double*));
-		for(j = 0; j < sizes[i+1]; j++){
+		for(int j = 0; j < sizes[i+1]; j++){
 			network->weights[i][j] = (double*)malloc(sizes[i]*sizeof(double));
-			for(k = 0; k < sizes[i]; k++)
+			for(int k = 0; k < sizes[i]; k++)
 				network->weights[i][j][k] = randFloat();
 		}
 	}
@@ -67,68 +67,134 @@ double sigmoid(double z){
 	return 1.0 / (1.0 + exp(-z));
 }
 
-// Elementwise sigmoid operation on (Ax1)
-double* elementwiseSigmoid(double* z, int dim_A){
-
-	double* output = (double*)malloc(dim_A*sizeof(double));
-
-	for(int i = 0; i < dim_A; i++)
-		output[i] = sigmoid(z[i]);
-	
-	return output;
-}
-
-// Matrix multiplication for (AxB) times (Bx1)
-double* matVecProd(double** matrix, double* vector, int dim_A, int dim_B){
-
-	double* product = (double*)malloc(dim_A*sizeof(double));
-
-	for(int i = 0; i < dim_A; i++){
-		product[i] = 0;
-
-		for(int j = 0; j < dim_B; j++)
-			product[i] += matrix[i][j] * vector[j];
-	}
-	return product;
-}
-
-// Vector sum (aX1)
-double* vecVecSum(double* vector_1, double* vector_2, int dim_A){
-
-	double* sum = (double*)malloc(dim_A*sizeof(double));
-
-	for(int i = 0; i < dim_A; i++)
-		sum[i] = vector_1[i] + vector_2[i];
-	
-	return sum;
-}
-
-/*
-CONSIDER WRITING A FUNCTION TO COMBINE
-PRODUCT -> SUM -> SIGMOID
-TO AVOID LOOPING OVER ARRAY SO MANY TIMES
-*/
-
-/* 
-WORRY ABOUT ALL THE FREEING ISSUES
-*/
-
 // Forward propagate, retrieve output from input
-double* feedForward(Network* network, double* input_vector){
+double* feedForward(Network* network, double* input){
 
 	int size_from, size_to;
-	double* output = input_vector;
+	double* activation_from;
+	double* activation_to;
 
 	for(int i = 0; i < network->num_layers-1; i++){
 
 		size_from = network->sizes[i];
 		size_to = network->sizes[i+1];
 
-		output = matVecProd(network->weights[i], output, size_to, size_from);
-		output = vecVecSum(output, network->biases[i+1], size_to);
-		output = elementwiseSigmoid(output, size_to);
+		if (i == 0){
+			activation_from = (double*)malloc(size_from*sizeof(double));
+			memcpy(activation_from, input, size_from*sizeof(double));
+			activation_to = (double*)malloc(size_to*sizeof(double));
+		}
+		else{
+			activation_from = (double*)realloc(activation_from, size_from*sizeof(double));
+			memcpy(activation_from, activation_to, size_from*sizeof(double));
+			activation_to = (double*)realloc(activation_to, size_to*sizeof(double));
+		}
+
+		for(int j = 0; j < size_to; j++){
+			activation_to[j] = 0;
+
+			for(int k = 0; k < size_from; k++)
+				activation_to[j] += network->weights[i][j][k] * activation_from[k];
+
+			activation_to[j] += network->biases[i+1][j];
+			activation_to[j] = sigmoid(activation_to[j]);
+		}
 	}
-	return output;
+	free(activation_from);
+	return activation_to;
+}
+
+// Save parameters of NN to file
+void saveNetwork(Network* network, char* filename){
+
+	// Open file
+	FILE* fptr = fopen(filename, "w+");
+	if (!fptr){
+		printf("File %s not found.\n", filename);
+		return;
+	}
+
+	// Save num_layers
+	fprintf(fptr, "num_layers = %d\n\n", network->num_layers);
+
+	// Save sizes
+	fprintf(fptr, "sizes = ");
+	for(int i = 0; i < network->num_layers; i++)
+		fprintf(fptr, "%d ", network->sizes[i]);
+	fprintf(fptr, "\n\n");
+
+	// Save biases
+	fprintf(fptr, "biases = \n\n");
+	for(int i = 1; i < network->num_layers; i++){
+		for(int j = 0; j < network->sizes[i]; j++)
+			fprintf(fptr, "%lf ", network->biases[i][j]);
+		fprintf(fptr, "\n\n");
+	}
+
+	// Save weights
+	fprintf(fptr, "weights = \n\n");
+	for(int i = 0; i < network->num_layers-1; i++){
+		for(int j = 0; j < network->sizes[i+1]; j++){
+			for(int k = 0; k < network->sizes[i]; k++)
+				fprintf(fptr, "%lf ", network->weights[i][j][k]);
+			fprintf(fptr, "\n");
+		}
+		fprintf(fptr, "\n");
+	}
+
+	fclose(fptr);
+	return;
+}
+
+// Load parameters to NN
+Network* loadNetwork(Network* network, char* filename){
+
+	// Open file
+	FILE* fptr = fopen(filename, "r");
+	if (!fptr){
+		printf("File %s not found.\n", filename);
+		return NULL;
+	}
+
+	// Allocate memory for struct
+	network = (Network*)malloc(sizeof(Network));
+
+	// Load num_layers
+	fscanf(fptr, "num_layers = %d\n\n", &(network->num_layers));
+
+	// Allocate mem, load sizes
+	network->sizes = (int*)malloc(network->num_layers*sizeof(int));
+	fscanf(fptr, "sizes = ");
+	for(int i = 0; i < network->num_layers; i++)
+		fscanf(fptr, "%d ", &(network->sizes[i]));
+	fscanf(fptr, "\n\n");
+
+	// Allocate mem, load biases
+	network->biases = (double**)malloc(network->num_layers*sizeof(double*));
+	fscanf(fptr, "biases = \n\n");
+	for(int i = 1; i < network->num_layers; i++){
+		network->biases[i] = (double*)malloc(network->sizes[i]*sizeof(double));
+		for(int j = 0; j < network->sizes[i]; j++)
+			fscanf(fptr, "%lf ", &(network->biases[i][j]));
+		fscanf(fptr, "\n\n");
+	}
+
+	// Allocate mem, load weights
+	network->weights = (double***)malloc(network->num_layers*sizeof(double**));
+	fscanf(fptr, "weights = \n\n");
+	for(int i = 0; i < network->num_layers-1; i++){
+		network->weights[i] = (double**)malloc(network->sizes[i+1]*sizeof(double*));
+		for(int j = 0; j < network->sizes[i+1]; j++){
+			network->weights[i][j] = (double*)malloc(network->sizes[i]*sizeof(double));
+			for(int k = 0; k < network->sizes[i]; k++)
+				fscanf(fptr, "%lf ", &(network->weights[i][j][k]));
+			fscanf(fptr, "\n");
+		}
+		fscanf(fptr, "\n");
+	}
+
+	fclose(fptr);
+	return network;
 }
 
 // The main attraction
@@ -137,16 +203,17 @@ int main(){
 	srand(time(NULL));
 
 	int num_layers = 3;
-	int sizes[] = {4, 8, 3};
-
-	Network* network = initNetwork(num_layers, sizes);
-
+	int sizes[] = {4, 3, 2};
 	double input_vector[4] = {4.0, 3.0, 2.5, 3.4};
+
+	//Network* network = initNetwork(num_layers, sizes);
+	Network* network = loadNetwork(network, FILENAME);
 	double* output = feedForward(network, input_vector);
 
-	for(int i = 0; i < 3; i++)
+	for(int i = 0; i < network->sizes[num_layers-1]; i++)
 		printf("Value: %lf\n", output[i]);
 
+	//saveNetwork(network, FILENAME);
 	return 0;
 }
 
@@ -297,4 +364,44 @@ def sigmoid_prime(z):
     """Derivative of the sigmoid function."""
     return sigmoid(z)*(1-sigmoid(z))
 
+*/
+
+// MY FUNCTIONS THAT AREN'T BEING USED
+
+/*
+// Elementwise sigmoid operation on (Ax1)
+double* elementwiseSigmoid(double* z, int dim_A){
+
+	double* output = (double*)malloc(dim_A*sizeof(double));
+
+	for(int i = 0; i < dim_A; i++)
+		output[i] = sigmoid(z[i]);
+	
+	return output;
+}
+
+// Matrix multiplication for (AxB) times (Bx1)
+double* matVecProd(double** matrix, double* vector, int dim_A, int dim_B){
+
+	double* product = (double*)malloc(dim_A*sizeof(double));
+
+	for(int i = 0; i < dim_A; i++){
+		product[i] = 0;
+
+		for(int j = 0; j < dim_B; j++)
+			product[i] += matrix[i][j] * vector[j];
+	}
+	return product;
+}
+
+// Vector sum (aX1)
+double* vecVecSum(double* vector_1, double* vector_2, int dim_A){
+
+	double* sum = (double*)malloc(dim_A*sizeof(double));
+
+	for(int i = 0; i < dim_A; i++)
+		sum[i] = vector_1[i] + vector_2[i];
+	
+	return sum;
+}
 */
