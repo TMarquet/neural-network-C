@@ -200,20 +200,23 @@ Network* loadNetwork(Network* network, char* filename){
 // The main attraction
 int main(){
 
+	/*
 	srand(time(NULL));
 
 	int num_layers = 3;
 	int sizes[] = {4, 3, 2};
-	double input_vector[4] = {4.0, 3.0, 2.5, 3.4};
 
-	//Network* network = initNetwork(num_layers, sizes);
+	Network* network = initNetwork(num_layers, sizes);
+	saveNetwork(network, FILENAME);
+	*/
+
 	Network* network = loadNetwork(network, FILENAME);
+	double input_vector[4] = {4.0, 3.0, 2.5, 3.4};
 	double* output = feedForward(network, input_vector);
 
-	for(int i = 0; i < network->sizes[num_layers-1]; i++)
+	for(int i = 0; i < network->sizes[network->num_layers-1]; i++)
 		printf("Value: %lf\n", output[i]);
 
-	//saveNetwork(network, FILENAME);
 	return 0;
 }
 
