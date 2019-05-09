@@ -3,7 +3,6 @@
 #include <string.h>
 #include <time.h>
 #include <math.h>
-#include <byteswap.h>
 #define FILENAME "neural_network_parameters.txt"
 
 /*
@@ -36,7 +35,7 @@ Network* initNetwork(int num_layers, int sizes[]){
 	// Set num layers
 	network->num_layers = num_layers;
 
-	// Allocate memory for size array, read values
+	// Allocate memory for size array, set values
 	network->sizes = (int*)malloc(num_layers*sizeof(int));
 	for(int i = 0; i < num_layers; i++)
 		network->sizes[i] = sizes[i];
@@ -105,7 +104,7 @@ void saveNetwork(Network* network, char* filename){
 }
 
 // Allocate memory and load parameters to NN
-Network* loadNetwork(Network* network, char* filename){
+Network* loadNetwork(char* filename){
 
 	// Open file
 	FILE* fptr = fopen(filename, "r");
@@ -115,7 +114,7 @@ Network* loadNetwork(Network* network, char* filename){
 	}
 
 	// Allocate memory for struct
-	network = (Network*)malloc(sizeof(Network));
+	Network* network = (Network*)malloc(sizeof(Network));
 
 	// Load num_layers
 	fscanf(fptr, "num_layers = %d\n\n", &(network->num_layers));
@@ -342,6 +341,8 @@ void stochasticGradientDescent(Network* network, double** training_input,
 		// Number of minibatches per epoch
 		for(int j = 0; j < training_size/mini_batch_size; j++){
 
+			printf("Minibatch %d / %d\n", j+1, training_size/mini_batch_size);
+
 			// Size of minibatch
 			for(int k = 0; k < mini_batch_size; k++){
 
@@ -357,7 +358,7 @@ void stochasticGradientDescent(Network* network, double** training_input,
 				update_mini_batch(network, mini_batch_input, mini_batch_output, mini_batch_size, learning_rate);
 			}
 		}
-		printf("Epoch %d complete.\n", i+1);
+		printf("Epoch %d / %d complete.\n", i+1, epochs);
 	}
 
 	// Free mini_batch memory
@@ -393,15 +394,7 @@ int main(){
 	free(output);
 	*/
 
-	srand(time(NULL));
-
-	Network* network = loadNetwork(network, FILENAME);
-
-	int training_size = 400;
-	int mini_batch_size = 20;
-	int epochs = 30;
-	double learning_rate = 4.0;
-
+	/*
 	double** training_input = (double**)malloc(training_size*sizeof(double*));
 	for(int i = 0; i < training_size; i++){
 		training_input[i] = (double*)malloc(network->sizes[0]*sizeof(double));
@@ -415,9 +408,56 @@ int main(){
 		for(int j = 0; j < network->sizes[network->num_layers-1]; j++)
 			training_output[i][j] = i+1;
 	}
+	*/
 
-	stochasticGradientDescent(network, training_input, training_output, 
-				training_size, mini_batch_size, epochs, learning_rate);
+	// Random seed
+	srand(time(NULL));
+
+	// Load in training data
+	FILE* t_ptr_i = fopen("training_input.txt", "r");
+	if (!t_ptr_i){
+		printf("Data not loaded\n");
+		return -1;
+	}
+	double** training_input = (double**)malloc(5000*sizeof(double*));
+	for(int i = 0; i < 5000; i++){
+		training_input[i] = (double*)malloc(784*sizeof(double));
+		for(int j = 0; j < 784; j++)
+			fscanf(t_ptr_i, "%lf,", &(training_input[i][j]));
+		fscanf(t_ptr_i, "\n");
+	}
+	fclose(t_ptr_i);
+
+	FILE* t_ptr_o = fopen("training_output.txt", "r");
+	if (!t_ptr_o){
+		printf("Data not loaded\n");
+		return -1;
+	}
+	double** training_output = (double**)malloc(5000*sizeof(double*));
+	for(int i = 0; i < 5000; i++){
+		training_output[i] = (double*)malloc(10*sizeof(double));
+		for(int j = 0; j < 10; j++)
+			fscanf(t_ptr_o, "%lf,", &(training_output[i][j]));
+		fscanf(t_ptr_o, "\n");
+	}
+	fclose(t_ptr_o);
+
+	// Prepare network
+	int num_layers = 3;
+	int sizes[] = {784, 64, 10};
+
+	Network* network = initNetwork(num_layers, sizes);
+	//saveNetwork(network, FILENAME);
+
+	int training_size = 500;	// 50000
+	int validation_szie = 10000;
+	int test_size = 10000;
+	int mini_batch_size = 100;
+	int epochs = 30;
+	double learning_rate = 4.0;
+
+	stochasticGradientDescent(network, training_input, training_output, training_size, 
+							mini_batch_size, epochs, learning_rate);
 
 	for(int i = 0; i < training_size; i++){
 		free(training_input[i]);
@@ -426,62 +466,6 @@ int main(){
 	free(training_input);
 	free(training_output);
 	free(network);
-
+	
 	return 0;
 }
-
-
-// MY FUNCTIONS THAT AREN'T BEING USED
-
-/*
-// Elementwise sigmoid operation on (Ax1)
-double* elementwiseSigmoid(double* z, int dim_A){
-
-	double* output = (double*)malloc(dim_A*sizeof(double));
-
-	for(int i = 0; i < dim_A; i++)
-		output[i] = sigmoid(z[i]);
-	
-	return output;
-}
-
-// Matrix multiplication for (AxB) times (Bx1)
-double* matVecProd(double** matrix, double* vector, int dim_A, int dim_B){
-
-	double* product = (double*)malloc(dim_A*sizeof(double));
-
-	for(int i = 0; i < dim_A; i++){
-		product[i] = 0;
-
-		for(int j = 0; j < dim_B; j++)
-			product[i] += matrix[i][j] * vector[j];
-	}
-	return product;
-}
-
-// Vector sum (aX1)
-double* vecVecSum(double* vector_1, double* vector_2, int dim_A){
-
-	double* sum = (double*)malloc(dim_A*sizeof(double));
-
-	for(int i = 0; i < dim_A; i++)
-		sum[i] = vector_1[i] + vector_2[i];
-	
-	return sum;
-}
-*/
-
-
-/*
-FILE* images = fopen("train-images-idx3-ubyte.gz", "rb");
-if (!images){
-	perror("Could not open the images\n");
-	return -1;
-}
-
-FILE* labels = fopen("train-labels-idx1-ubyte.gz", "rb");
-if (!labels){
-	perror("Could not open the labels\n");
-	return -1;
-}
-*/
