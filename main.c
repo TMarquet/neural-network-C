@@ -490,6 +490,12 @@ int evaluate(Network* network, double** test_input, double** test_output, int te
 	return success;
 }
 
+/*
+CREATE .c AND .h FILES FOR NEURAL NETWORK
+UPDATE MAKEFILE ACCORDINGLY
+UPDATE MAKEFILE TO RUN ALL PYTHON SCRIPTS
+*/
+
 // The main attraction
 int main(){
 
