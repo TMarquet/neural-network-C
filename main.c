@@ -566,7 +566,7 @@ int main(){
 
 	// Prepare network
 	int num_layers = 3;
-	int sizes[] = {784, 64, 10};
+	int sizes[] = {784, 30, 10};
 
 	Network* network = initNetwork(num_layers, sizes);
 	saveNetwork(network, FILENAME);
@@ -578,11 +578,11 @@ int main(){
 	printf("Successfully predicted %d / %d.\n", success, test_size);
 
 	// Train the network
-	int training_size = 50;	// 50000 max size
-	//int validation_szie = 10; // 10000 max size
-	int mini_batch_size = 25;
-	int epochs = 1;
-	double learning_rate = 4.0;
+	int training_size = 50000;	// 50000 max size
+	//int validation_szie = 10;	// 10000 max size
+	int mini_batch_size = 10;
+	int epochs = 30;
+	double learning_rate = 3.0;
 
 	stochasticGradientDescent(network, training_input, training_output, training_size, 
 								mini_batch_size, epochs, learning_rate);
