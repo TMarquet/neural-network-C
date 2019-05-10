@@ -172,6 +172,14 @@ double sigmoidPrime(double z){
 CODE FORWARD PROPAGATE TO LOOK LIKE FORWARD PASS FROM BACKPROP
 */
 
+/*
+USE A BETTER MATRIX MULTIPLICATION ALGORITHM
+*/
+
+/*
+CHECK AGAIN THAT ALL ALLOC AND CALLOC MEMORY IS FREED
+*/
+
 // Forward propagate, retrieve output from input
 double* feedForward(Network* network, double* input){
 
