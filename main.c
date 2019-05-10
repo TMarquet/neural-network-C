@@ -3,7 +3,9 @@
 #include <string.h>
 #include <time.h>
 #include <math.h>
-#define FILENAME "neural_network_parameters.txt"
+#include <limits.h>
+#define FILENAME 	"neural_network_parameters.txt"
+#define LAST 		network->num_layers-1
 
 /*
 Reference: http://neuralnetworksanddeeplearning.com/chap1.html
@@ -160,6 +162,16 @@ double sigmoid(double z){
 	return 1.0 / (1.0 + exp(-z));
 }
 
+// Derivative of squishification function
+double sigmoidPrime(double z){
+
+	return sigmoid(z) * (1.0 - sigmoid(z));
+}
+
+/*
+CODE FORWARD PROPAGATE TO LOOK LIKE FORWARD PASS FROM BACKPROP
+*/
+
 // Forward propagate, retrieve output from input
 double* feedForward(Network* network, double* input){
 
@@ -197,6 +209,11 @@ double* feedForward(Network* network, double* input){
 	return activation_to;
 }
 
+/*
+MAKE THIS CODE MORE C LIKE
+PREALLOCATE MEMORY
+*/
+
 // Determine the gradient of the NN
 void backPropagation(Network* network, double* input, double* output,
 					double*** delta_nabla_biases, double**** delta_nabla_weights){
@@ -210,12 +227,81 @@ void backPropagation(Network* network, double* input, double* output,
 			for(int k = 0; k < network->sizes[i]; k++)
 				delta_nabla_weights[0][i][j][k] = 0;
 
+	double** activations;
+	double** z_values;
+
+	activations = (double**)calloc(network->num_layers, sizeof(double*));
+	for(int i = 0; i < network->num_layers; i++)
+		activations[i] = (double*)calloc(network->sizes[i], sizeof(double));
+
+	z_values = (double**)calloc(network->num_layers, sizeof(double*));
+	for(int i = 1; i < network->num_layers; i++)
+		z_values[i] = (double*)calloc(network->sizes[i], sizeof(double));
+
+	// Copy the input activations
+	for(int i = 0; i < network->sizes[0]; i++)
+		activations[0][i] = input[i];
+
+	// Forward pass
+	int size_from, size_to;
+
+	for(int i = 0; i < network->num_layers-1; i++){
+
+		size_from = network->sizes[i];
+		size_to = network->sizes[i+1];
+
+		for(int j = 0; j < size_to; j++){
+
+			for(int k = 0; k < size_from; k++)
+				z_values[i+1][j] += network->weights[i][j][k] * activations[i][k];
+
+			z_values[i+1][j] += network->biases[i+1][j];
+			activations[i+1][j] = sigmoid(z_values[i+1][j]);
+		}
+	}
+
+	// Backward pass
+	for(int j = 0; j < network->sizes[LAST]; j++)
+		delta_nabla_biases[0][LAST][j] = (activations[LAST][j] - output[j]) * sigmoidPrime(z_values[LAST][j]);
+
+	for(int j = 0; j < network->sizes[LAST]; j++)
+		for(int k = 0; k < network->sizes[LAST-1]; k++)
+			delta_nabla_weights[0][LAST-1][j][k] = delta_nabla_biases[0][LAST][j] * activations[LAST-1][k];
+
+	// Loop backwards through layers
+	for(int i = 1; i < network->num_layers-1; i++){
+
+		for(int j = 0; j < network->sizes[LAST-i]; j++){
+			for(int k = 0; k < network->sizes[LAST-i+1]; k++)
+				delta_nabla_biases[0][LAST-i][j] += network->weights[LAST-i][k][j] * delta_nabla_biases[0][LAST-i+1][k];
+
+			delta_nabla_biases[0][LAST-i][j] *= sigmoidPrime(z_values[LAST-i][j]);
+		}
+
+		for(int j = 0; j < network->sizes[LAST-i]; j++)
+			for(int k = 0; k < network->sizes[LAST-i-1]; k++)
+				delta_nabla_weights[0][LAST-i-1][j][k] = delta_nabla_biases[0][LAST-i][j] * activations[LAST-i-1][k];
+	}
+
+	// Free memory
+	for(int i = 0; i < network->num_layers; i++)
+		free(activations[i]);
+	free(activations);
+
+	for(int i = 1; i < network->num_layers; i++)
+		free(z_values[i]);
+	free(z_values);
+
 	return;
 }
 
 /*
 CONSIDER PREALLOCATING MEMORY FOR ALL THE NABLAS AND DELTAS IN THE STRUCT AS TO AVOID
 HAVING TO CALLOC AND MALLOC AND FREE EVERY TIME
+*/
+
+/*
+IMPLEMENT MEMSET FOR SETTING ALL VALUES TO ZERO
 */
 
 // Applying SGD for the mini batch
@@ -330,7 +416,7 @@ void stochasticGradientDescent(Network* network, double** training_input,
 
 	for(int i = 0; i < mini_batch_size; i++){
 		mini_batch_input[i] = (double*)malloc(network->sizes[0]*sizeof(double));
-		mini_batch_output[i] = (double*)malloc(network->sizes[network->num_layers-1]*sizeof(double));
+		mini_batch_output[i] = (double*)malloc(network->sizes[LAST]*sizeof(double));
 	}
 
 	// Repeat process epoch times
@@ -351,7 +437,7 @@ void stochasticGradientDescent(Network* network, double** training_input,
 
 				// Setup minibatches
 				memcpy(mini_batch_input[k], training_input[index], network->sizes[0]*sizeof(double));
-				memcpy(mini_batch_output[k], training_output[index], network->sizes[network->num_layers-1]*sizeof(double));
+				memcpy(mini_batch_output[k], training_output[index], network->sizes[LAST]*sizeof(double));
 				index++;
 				
 				// Apply the SGD
@@ -372,93 +458,134 @@ void stochasticGradientDescent(Network* network, double** training_input,
 	return;
 }
 
+// Test how well the NN does for given test data
+int evaluate(Network* network, double** test_input, double** test_output, int test_size){
+
+	double* neural_output;
+	int success = 0;
+
+	int max_index;
+	double max_activation;
+
+	for(int i = 0; i < test_size; i++){
+
+		neural_output = feedForward(network, test_input[i]);
+
+		max_index = 0;
+		max_activation = neural_output[0];
+
+		for(int j = 1; j < network->sizes[network->num_layers - 1]; j++){
+
+			if (neural_output[j] > max_activation){
+				max_index = j;
+				max_activation = neural_output[j];
+			}
+		}
+
+		if (test_output[i][max_index] > 0.5)
+			success++;
+
+		free(neural_output);
+	}
+	return success;
+}
+
 // The main attraction
 int main(){
-
-	/*
-	int num_layers = 3;
-	int sizes[] = {4, 3, 2};
-
-	Network* network = initNetwork(num_layers, sizes);
-	saveNetwork(network, FILENAME);
-	*/
-
-	/*
-	double input_vector[4] = {4.0, 3.0, 2.5, 3.4};
-	double* output = feedForward(network, input_vector);
-
-	printf("Final layer activation values:\n");
-	for(int i = 0; i < network->sizes[network->num_layers-1]; i++)
-		printf("%d: %lf\n", i+1, output[i]);
-
-	free(output);
-	*/
-
-	/*
-	double** training_input = (double**)malloc(training_size*sizeof(double*));
-	for(int i = 0; i < training_size; i++){
-		training_input[i] = (double*)malloc(network->sizes[0]*sizeof(double));
-		for(int j = 0; j < network->sizes[0]; j++)
-			training_input[i][j] = i+1;
-	}
-
-	double** training_output = (double**)malloc(training_size*sizeof(double*));
-	for(int i = 0; i < training_size; i++){
-		training_output[i] = (double*)malloc(network->sizes[network->num_layers-1]*sizeof(double));
-		for(int j = 0; j < network->sizes[network->num_layers-1]; j++)
-			training_output[i][j] = i+1;
-	}
-	*/
 
 	// Random seed
 	srand(time(NULL));
 
 	// Load in training data
-	FILE* t_ptr_i = fopen("training_input.txt", "r");
-	if (!t_ptr_i){
+	printf("Reading data...\n");
+
+	FILE* ptr_i = fopen("data/training_input.txt", "r");
+	if (!ptr_i){
 		printf("Data not loaded\n");
 		return -1;
 	}
-	double** training_input = (double**)malloc(5000*sizeof(double*));
-	for(int i = 0; i < 5000; i++){
+	double** training_input = (double**)malloc(50000*sizeof(double*));
+	for(int i = 0; i < 50000; i++){
 		training_input[i] = (double*)malloc(784*sizeof(double));
 		for(int j = 0; j < 784; j++)
-			fscanf(t_ptr_i, "%lf,", &(training_input[i][j]));
-		fscanf(t_ptr_i, "\n");
+			fscanf(ptr_i, "%lf,", &(training_input[i][j]));
+		fscanf(ptr_i, "\n");
 	}
-	fclose(t_ptr_i);
+	fclose(ptr_i);
 
-	FILE* t_ptr_o = fopen("training_output.txt", "r");
-	if (!t_ptr_o){
+	FILE* ptr_o = fopen("data/training_output.txt", "r");
+	if (!ptr_o){
 		printf("Data not loaded\n");
 		return -1;
 	}
-	double** training_output = (double**)malloc(5000*sizeof(double*));
-	for(int i = 0; i < 5000; i++){
+	double** training_output = (double**)malloc(50000*sizeof(double*));
+	for(int i = 0; i < 50000; i++){
 		training_output[i] = (double*)malloc(10*sizeof(double));
 		for(int j = 0; j < 10; j++)
-			fscanf(t_ptr_o, "%lf,", &(training_output[i][j]));
-		fscanf(t_ptr_o, "\n");
+			fscanf(ptr_o, "%lf,", &(training_output[i][j]));
+		fscanf(ptr_o, "\n");
 	}
-	fclose(t_ptr_o);
+	fclose(ptr_o);
+
+	// Load in test data
+	ptr_i = fopen("data/test_input.txt", "r");
+	if (!ptr_i){
+		printf("Data not loaded\n");
+		return -1;
+	}
+	double** test_input = (double**)malloc(10000*sizeof(double*));
+	for(int i = 0; i < 10000; i++){
+		test_input[i] = (double*)malloc(784*sizeof(double));
+		for(int j = 0; j < 784; j++)
+			fscanf(ptr_i, "%lf,", &(test_input[i][j]));
+		fscanf(ptr_i, "\n");
+	}
+	fclose(ptr_i);
+
+	ptr_o = fopen("data/test_output.txt", "r");
+	if (!ptr_o){
+		printf("Data not loaded\n");
+		return -1;
+	}
+	double** test_output = (double**)malloc(10000*sizeof(double*));
+	for(int i = 0; i < 10000; i++){
+		test_output[i] = (double*)malloc(10*sizeof(double));
+		for(int j = 0; j < 10; j++)
+			fscanf(ptr_o, "%lf,", &(test_output[i][j]));
+		fscanf(ptr_o, "\n");
+	}
+	fclose(ptr_o);
+
+	printf("Read complete.\n");
 
 	// Prepare network
 	int num_layers = 3;
 	int sizes[] = {784, 64, 10};
 
 	Network* network = initNetwork(num_layers, sizes);
-	//saveNetwork(network, FILENAME);
+	saveNetwork(network, FILENAME);
+	//Network* network = loadNetwork(FILENAME);
 
-	int training_size = 500;	// 50000
-	int validation_szie = 10000;
-	int test_size = 10000;
-	int mini_batch_size = 100;
-	int epochs = 30;
+	// Test network out of the box
+	int test_size = 100; // 10000 max size
+	int success = evaluate(network, test_input, test_output, test_size);
+	printf("Successfully predicted %d / %d.\n", success, test_size);
+
+	// Train the network
+	int training_size = 50;	// 50000 max size
+	//int validation_szie = 10; // 10000 max size
+	int mini_batch_size = 25;
+	int epochs = 1;
 	double learning_rate = 4.0;
 
 	stochasticGradientDescent(network, training_input, training_output, training_size, 
-							mini_batch_size, epochs, learning_rate);
+								mini_batch_size, epochs, learning_rate);
 
+	// Test network after training
+	success = evaluate(network, test_input, test_output, test_size);
+	printf("Successfully predicted %d / %d.\n", success, test_size);
+
+	// Free the memory
 	for(int i = 0; i < training_size; i++){
 		free(training_input[i]);
 		free(training_output[i]);

@@ -40,7 +40,9 @@ for i in range(len(tr_i)):
 	for j in range(784):
 		training_input[i,j] = tr_i[i][j]
 
-np.savetxt('training_input.txt', training_input, fmt='%1.2e', delimiter=',')
+np.savetxt('data/training_input.txt', training_input, fmt='%1.2e', delimiter=',')
+
+print("1/6 completed.")
 
 training_output = np.zeros((len(tr_o), 10))
 
@@ -48,8 +50,9 @@ for i in range(len(tr_o)):
 	for j in range(10):
 		training_output[i,j] = tr_o[i][j]
 
-np.savetxt('training_output.txt', training_output, fmt='%1.2e', delimiter=',')
+np.savetxt('data/training_output.txt', training_output, fmt='%1.2e', delimiter=',')
 
+print("2/6 completed.")
 
 validation_input = np.zeros((len(va_i), 784))
 
@@ -57,7 +60,9 @@ for i in range(len(va_i)):
 	for j in range(784):
 		validation_input[i,j] = va_i[i][j]
 
-np.savetxt('validation_input.txt', validation_input, fmt='%1.2e', delimiter=',')
+np.savetxt('data/validation_input.txt', validation_input, fmt='%1.2e', delimiter=',')
+
+print("3/6 completed.")
 
 validation_output = np.zeros((len(va_o), 10))
 
@@ -65,8 +70,9 @@ for i in range(len(va_o)):
 	for j in range(10):
 		validation_output[i,j] = va_o[i][j]
 
-np.savetxt('validation_output.txt', validation_output, fmt='%1.2e', delimiter=',')
+np.savetxt('data/validation_output.txt', validation_output, fmt='%1.2e', delimiter=',')
 
+print("4/6 completed.")
 
 test_input = np.zeros((len(te_i), 784))
 
@@ -74,7 +80,9 @@ for i in range(len(te_i)):
 	for j in range(784):
 		test_input[i,j] = te_i[i][j]
 
-np.savetxt('test_input.txt', test_input, fmt='%1.2e', delimiter=',')
+np.savetxt('data/test_input.txt', test_input, fmt='%1.2e', delimiter=',')
+
+print("5/6 completed.")
 
 test_output = np.zeros((len(te_o), 10))
 
@@ -82,12 +90,13 @@ for i in range(len(te_o)):
 	for j in range(10):
 		test_output[i,j] = te_o[i][j]
 
-np.savetxt('test_output.txt', test_output, fmt='%1.2e', delimiter=',')
+np.savetxt('data/test_output.txt', test_output, fmt='%1.2e', delimiter=',')
 
+print("6/6 completed.")
 
+print("Training set size:")
 print(len(tr_i))
-print(len(tr_o))
+print("Validation set size:")
 print(len(va_i))
-print(len(va_o))
+print("Test set size:")
 print(len(te_i))
-print(len(te_o))
