@@ -168,18 +168,6 @@ double sigmoidPrime(double z){
 	return sigmoid(z) * (1.0 - sigmoid(z));
 }
 
-/*
-CODE FORWARD PROPAGATE TO LOOK LIKE FORWARD PASS FROM BACKPROP
-*/
-
-/*
-USE A BETTER MATRIX MULTIPLICATION ALGORITHM
-*/
-
-/*
-CHECK AGAIN THAT ALL ALLOC AND CALLOC MEMORY IS FREED
-*/
-
 // Forward propagate, retrieve output from input
 double* feedForward(Network* network, double* input){
 
@@ -216,11 +204,6 @@ double* feedForward(Network* network, double* input){
 	free(activation_from);
 	return activation_to;
 }
-
-/*
-MAKE THIS CODE MORE C LIKE
-PREALLOCATE MEMORY
-*/
 
 // Determine the gradient of the NN
 void backPropagation(Network* network, double* input, double* output,
@@ -302,15 +285,6 @@ void backPropagation(Network* network, double* input, double* output,
 
 	return;
 }
-
-/*
-CONSIDER PREALLOCATING MEMORY FOR ALL THE NABLAS AND DELTAS IN THE STRUCT AS TO AVOID
-HAVING TO CALLOC AND MALLOC AND FREE EVERY TIME
-*/
-
-/*
-IMPLEMENT MEMSET FOR SETTING ALL VALUES TO ZERO
-*/
 
 // Applying SGD for the mini batch
 void update_mini_batch(Network* network, double** mini_batch_input, 
@@ -396,17 +370,6 @@ void update_mini_batch(Network* network, double** mini_batch_input,
 
 	return;
 }
-
-/*
-CONSIDER A REAL SHUFFLE FOR THE MINI BATCHES
-IMPLEMENT OPTIONAL TEST DATA AT END OF EVERY EPOCH
-*/
-
-/*
-MADE CODE MORE C LIKE
-LESS LIKE PYTHON
-PLEASE
-*/
 
 // Training algorithm
 void stochasticGradientDescent(Network* network, double** training_input, 
@@ -497,12 +460,6 @@ int evaluate(Network* network, double** test_input, double** test_output, int te
 	}
 	return success;
 }
-
-/*
-CREATE .c AND .h FILES FOR NEURAL NETWORK
-UPDATE MAKEFILE ACCORDINGLY
-UPDATE MAKEFILE TO RUN ALL PYTHON SCRIPTS
-*/
 
 // The main attraction
 int main(){
@@ -610,3 +567,25 @@ int main(){
 	
 	return 0;
 }
+
+/***************************\
+*	TO DO LIST
+*
+* - Successfully read training data from original MNIST files
+* - Create .c and .h files for neural network functions
+*	- Update Makefile accordingly
+* - Add commands to run Python scripts in Makefile
+* - Implement memset() where setting values to zero
+* - Set values to zero before doing matrix multiplications
+* - Preallocate memory where malloc and calloc used over and over again
+* - Ensure all memory is free() where malloc or calloc used
+* - Implement faster matrix multiplicaiton
+* - feedForward()
+*	- Make the forward propagation look more like that from backPropagation()
+* - SGD()
+*	- Properly shuffle training data to have randomized mini-batches
+*	- Impletement optional validation data and end of every epoch
+*
+* - Overall make code more C like and less Python like
+*
+\***************************/
