@@ -4,10 +4,6 @@
 #include "mnist.h"
 #include "network.h"
 
-/*
-Reference: http://neuralnetworksanddeeplearning.com/chap1.html
-*/
-
 // The main attraction
 int main(){
 
