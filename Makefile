@@ -1,10 +1,14 @@
+SRCS = mnist.c network.c
+OBJS = ${SRCS:.c=.o}
+HDS = ${SRCS:.c=.h}
+
 all: main
 
-main: main.c
-	gcc main.c -o main -lm -g
+main: main.c ${OBJS}
+	gcc main.c ${OBJS} -o main -lm -g
 
-python:
-	python3 load_data_set.py
+.c.o: ${SRCS} ${HDS}
+	gcc -c $<
 
 clean:
-	rm -f main neural_network_parameters.txt data/*
+	rm -f main ${OBJS}
