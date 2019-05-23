@@ -71,6 +71,7 @@ int main(){
 /***************************\
 *	TO DO LIST
 *
+* - Stop passing &delta_nablas like a moron, pass them directly instead
 * - Implement memset() where setting values to zero
 * - Set values to zero before doing matrix multiplications
 * - Preallocate memory where malloc and calloc used over and over again
