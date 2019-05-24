@@ -45,21 +45,20 @@ int main(){
 
 	// Test network out of the box
 	int test_size = TEST_SIZE; // 10_000 max size
-	int success = evaluate(network, test_input, test_output, test_size);
-	printf("Successfully predicted %d / %d.\n", success, test_size);
+	evaluate(network, test_input, test_output, test_size);
 
 	// Train the network
-	int training_size = TRAIN_SIZE;	// 60_000 max size
+	int training_size = 10000;	// 60_000 max size
 	int mini_batch_size = 10;
-	int epochs = 30;
+	int epochs = 1;
 	double learning_rate = 3.0;
 
-	stochasticGradientDescent(network, training_input, training_output, training_size, 
+	// Time the training process
+	benchmarkSGD(network, training_input, training_output, training_size, 
 								mini_batch_size, epochs, learning_rate);
-
+	
 	// Test network after training
-	success = evaluate(network, test_input, test_output, test_size);
-	printf("Successfully predicted %d / %d.\n", success, test_size);
+	evaluate(network, test_input, test_output, test_size);
 
 	// Free the memory
 	freeMNIST(&training_input, &training_output, &test_input, &test_output);

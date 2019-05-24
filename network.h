@@ -33,7 +33,7 @@ void update_mini_batch(Network*, double**, double**, int, double);
 void backPropagation(Network*, double*, double*, double***, double****);
 
 // Test how well the NN does for given test data
-int evaluate(Network*, double**, double**, int);
+void evaluate(Network*, double**, double**, int);
 
 // Squishification function
 double sigmoid(double);
@@ -43,3 +43,6 @@ double sigmoidPrime(double);
 
 // Generate uniform random float between -1 and 1
 double randFloat();
+
+// Run benchmark to test current training functions
+void benchmarkSGD(Network*, double**, double**, int, int, int, double);

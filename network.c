@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <time.h>
 #include "network.h"
 
 // Allocate memory and initialize random parameters in NN
@@ -394,7 +395,7 @@ void backPropagation(Network* network, double* input, double* output,
 }
 
 // Test how well the NN does for given test data
-int evaluate(Network* network, double** test_input, double** test_output, int test_size){
+void evaluate(Network* network, double** test_input, double** test_output, int test_size){
 
 	double* neural_output;
 	int success = 0;
@@ -421,7 +422,8 @@ int evaluate(Network* network, double** test_input, double** test_output, int te
 
 		free(neural_output);
 	}
-	return success;
+	printf("Successfully predicted %d / %d.\n", success, test_size);
+	return;
 }
 
 // Squishification function
@@ -441,4 +443,17 @@ double randFloat(){
 
 	double value = rand();
 	return 2.0*value/(double)RAND_MAX - 1.0;
+}
+
+void benchmarkSGD(Network* network, double** training_input, double** training_output, 
+					int training_size, int mini_batch_size, int epochs, double learning_rate){
+
+	clock_t t = clock(); 
+	stochasticGradientDescent(network, training_input, training_output, training_size, 
+								mini_batch_size, epochs, learning_rate);
+	t = clock() - t; 
+	double time_taken = ((double)t)/CLOCKS_PER_SEC;
+	
+	printf("SGD() took %lf seconds to execute \n", time_taken); 
+	return;
 }
