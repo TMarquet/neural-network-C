@@ -15,3 +15,6 @@ void convertMNIST(unsigned char**, unsigned char***, unsigned char**, unsigned c
 
 // Free the MNIST double arrays
 void freeMNIST(double***, double***, double***, double***);
+
+// Show some examples of imported training data
+void showMNIST(double**, double**, int);

@@ -39,14 +39,10 @@ void loadMNIST(unsigned char** training_labels, unsigned char*** training_images
 	fread(&num_images, 1, sizeof(unsigned int), fptr);
 
 	// I have an Intel processor R.I.P.
-	magic_number = __bswap_32(magic_number);
 	num_images = __bswap_32(num_images);
 
-	//printf("%u, %u\n", magic_number, num_images);
-
 	// Read labels
-	for(int i = 0; i < num_images; i++)
-		fread(training_labels[0] + i, 1, 1, fptr);
+	fread(training_labels[0], 1, num_images, fptr);
 	fclose(fptr);
 
 
@@ -69,17 +65,13 @@ void loadMNIST(unsigned char** training_labels, unsigned char*** training_images
 	fread(&num_cols, 1, sizeof(unsigned int), fptr);
 
 	// I have an Intel processor R.I.P.
-	magic_number = __bswap_32(magic_number);
 	num_images = __bswap_32(num_images);
 	num_rows = __bswap_32(num_rows);
 	num_cols = __bswap_32(num_cols);
 
-	//printf("%u, %u, %u, %u\n", magic_number, num_images, num_rows, num_cols);
-
 	// Read images
 	for(int i = 0; i < num_images; i++)
-		for(int j = 0; j < num_rows * num_cols; j++)
-				fread(training_images[0][i] + j, 1, 1, fptr);
+		fread(training_images[0][i], 1, num_rows*num_cols, fptr);
 	fclose(fptr);
 
 
@@ -100,14 +92,10 @@ void loadMNIST(unsigned char** training_labels, unsigned char*** training_images
 	fread(&num_images, 1, sizeof(unsigned int), fptr);
 
 	// I have an Intel processor R.I.P.
-	magic_number = __bswap_32(magic_number);
 	num_images = __bswap_32(num_images);
 
-	//printf("%u, %u\n", magic_number, num_images);
-
 	// Read labels
-	for(int i = 0; i < num_images; i++)
-		fread(test_labels[0] + i, 1, 1, fptr);
+	fread(test_labels[0], 1, num_images, fptr);
 	fclose(fptr);
 
 
@@ -130,17 +118,13 @@ void loadMNIST(unsigned char** training_labels, unsigned char*** training_images
 	fread(&num_cols, 1, sizeof(unsigned int), fptr);
 
 	// I have an Intel processor R.I.P.
-	magic_number = __bswap_32(magic_number);
 	num_images = __bswap_32(num_images);
 	num_rows = __bswap_32(num_rows);
 	num_cols = __bswap_32(num_cols);
 
-	//printf("%u, %u, %u, %u\n", magic_number, num_images, num_rows, num_cols);
-
 	// Read images
 	for(int i = 0; i < num_images; i++)
-		for(int j = 0; j < num_rows * num_cols; j++)
-				fread(test_images[0][i] + j, 1, 1, fptr);
+		fread(test_images[0][i], 1, num_rows*num_cols, fptr);
 	fclose(fptr);
 
 	return;
@@ -205,5 +189,36 @@ void freeMNIST(double*** training_input, double*** training_output,
 	free(test_input[0]);
 	free(test_output[0]);
 
+	return;
+}
+
+void showMNIST(double** training_input, double** training_output, int num_images){
+
+	int image;
+	double threshhold = 0.5;
+
+	for(int i = 0; i < num_images; i++){
+
+		image = rand() % 5000;
+
+		for(int i = 0; i < 28; i++){
+			for(int j = 0; j < 28; j++){
+
+				if (training_input[image][28*i + j] > threshhold)
+					printf("# ");
+				else
+					printf("  ");
+			}
+			printf("\n");
+		}
+
+		printf("This image corresponds to: ");
+
+		for(int i = 0; i < 10; i++)
+			if (training_output[image][i] > 0.5){
+				printf("%d\n", i);
+				break;
+			}
+	}
 	return;
 }

@@ -35,6 +35,11 @@ int main(){
 
 	printf("Conversion complete.\n");
 
+	// Show that the import worked
+	showMNIST(training_input, training_output, 10);
+
+	return 0;
+
 	// Prepare network
 	int num_layers = 3;
 	int sizes[] = {784, 30, 10};
@@ -48,7 +53,7 @@ int main(){
 	evaluate(network, test_input, test_output, test_size);
 
 	// Train the network
-	int training_size = 10000;	// 60_000 max size
+	int training_size = 10000; // 60_000 max size
 	int mini_batch_size = 10;
 	int epochs = 1;
 	double learning_rate = 3.0;
@@ -56,13 +61,12 @@ int main(){
 	// Time the training process
 	benchmarkSGD(network, training_input, training_output, training_size, 
 								mini_batch_size, epochs, learning_rate);
+
+	// Free training memory
+	freeMNIST(&training_input, &training_output, &test_input, &test_output);
 	
 	// Test network after training
 	evaluate(network, test_input, test_output, test_size);
-
-	// Free the memory
-	freeMNIST(&training_input, &training_output, &test_input, &test_output);
-	free(network);
 	
 	return 0;
 }
