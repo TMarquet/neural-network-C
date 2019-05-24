@@ -13,9 +13,7 @@ int main(){
 	// Load MNIST data
 	printf("Loading MNIST data...\n");
 	double **training_input, **training_output, **test_input, **test_output;
-	benchmarkLoadMNIST(&training_input, &training_output, &test_input, &test_output);
-
-	return 0;
+	loadMNIST(&training_input, &training_output, &test_input, &test_output);
 
 	// Show that the MNIST load worked
 	showMNIST(training_input, training_output, 0);
@@ -29,11 +27,11 @@ int main(){
 	//Network* network = loadNetwork(PARAM_NAME);
 
 	// Test network out of the box
-	int test_size = TEST_SIZE; // 10_000 max size
+	int test_size = TEST_SIZE;		// 10_000 max size
 	evaluate(network, test_input, test_output, test_size);
 
 	// Train the network
-	int training_size = 10000; // 60_000 max size
+	int training_size = 10000;		// 60_000 max size
 	int mini_batch_size = 10;
 	int epochs = 1;
 	double learning_rate = 3.0;
@@ -42,12 +40,12 @@ int main(){
 	benchmarkSGD(network, training_input, training_output, training_size, 
 								mini_batch_size, epochs, learning_rate);
 
-	// Free training memory
-	freeMNIST(&training_input, &training_output, &test_input, &test_output);
-	
 	// Test network after training
 	evaluate(network, test_input, test_output, test_size);
-	
+
+	// Free training memory
+	freeMNIST(&training_input, &training_output, &test_input, &test_output);
+
 	return 0;
 }
 
@@ -56,11 +54,12 @@ int main(){
 *
 * - Implement memset() where setting values to zero
 * - Set values to zero before doing matrix multiplications
+*
 * - Preallocate memory where malloc and calloc used over and over again
 * - Ensure all memory is free() where malloc or calloc used
+*
 * - Implement faster matrix multiplicaiton
-* - feedForward()
-*		- Make the forward propagation look more like that from backPropagation()
+*
 *
 * - SGD()
 *		- Properly shuffle training data to have randomized mini-batches

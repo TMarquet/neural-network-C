@@ -146,24 +146,23 @@ double* feedForward(Network* network, double* input){
 		size_to = network->sizes[i+1];
 
 		if (i == 0){
-			activation_from = (double*)malloc(size_from*sizeof(double));
-			memcpy(activation_from, input, size_from*sizeof(double));
-			activation_to = (double*)malloc(size_to*sizeof(double));
+			activation_from = (double*)malloc(size_from * sizeof(double));
+			memcpy(activation_from, input, size_from * sizeof(double));
+			activation_to = (double*)calloc(size_to, sizeof(double));
 		}
 		else{
-			activation_from = (double*)realloc(activation_from, size_from*sizeof(double));
-			memcpy(activation_from, activation_to, size_from*sizeof(double));
-			activation_to = (double*)realloc(activation_to, size_to*sizeof(double));
+			activation_from = (double*)realloc(activation_from, size_from * sizeof(double));
+			memcpy(activation_from, activation_to, size_from * sizeof(double));
+			activation_to = (double*)realloc(activation_to, size_to * sizeof(double));
+			memset(activation_to, 0, size_to * sizeof(double));
 		}
 
 		for(int j = 0; j < size_to; j++){
-			activation_to[j] = 0;
-
 			for(int k = 0; k < size_from; k++)
+
 				activation_to[j] += network->weights[i][j][k] * activation_from[k];
 
-			activation_to[j] += network->biases[i+1][j];
-			activation_to[j] = sigmoid(activation_to[j]);
+			activation_to[j] = sigmoid(activation_to[j] + network->biases[i+1][j]);
 		}
 	}
 	free(activation_from);
