@@ -170,9 +170,8 @@ double* feedForward(Network* network, double* input){
 }
 
 // Training algorithm
-void stochasticGradientDescent(Network* network, double** training_input, 
-					double** training_output, int training_size, int mini_batch_size, 
-					int epochs, double learning_rate){
+void stochasticGradientDescent(Network* network, double** training_input, double** training_output,
+								int training_size, int mini_batch_size, int epochs, double learning_rate){
 
 	if (training_size % mini_batch_size != 0){
 		printf("Mini batch size must evenly divide the training set size.\n");
@@ -228,37 +227,35 @@ void stochasticGradientDescent(Network* network, double** training_input,
 }
 
 // Applying SGD for the mini batch
-void update_mini_batch(Network* network, double** mini_batch_input, 
-					double** mini_batch_output, int mini_batch_size,
-					double learning_rate){
+void update_mini_batch(Network* network, double** mini_batch_input, double** mini_batch_output, 
+						int mini_batch_size, double learning_rate){
 
 	double** nabla_biases;
 	double*** nabla_weights;
 	double** delta_nabla_biases;
 	double*** delta_nabla_weights;
 
-	// Callocate memory
-	nabla_biases = (double**)calloc(network->num_layers, sizeof(double*));
+	// Allocate memory
+	nabla_biases = (double**)malloc(network->num_layers * sizeof(double*));
 	for(int i = 1; i < network->num_layers; i++)
 		nabla_biases[i] = (double*)calloc(network->sizes[i], sizeof(double));
 
-	nabla_weights = (double***)calloc(network->num_layers, sizeof(double**));
+	nabla_weights = (double***)malloc(network->num_layers * sizeof(double**));
 	for(int i = 0; i < network->num_layers-1; i++){
-		nabla_weights[i] = (double**)calloc(network->sizes[i+1], sizeof(double*));
+		nabla_weights[i] = (double**)malloc(network->sizes[i+1] * sizeof(double*));
 		for(int j = 0; j < network->sizes[i+1]; j++)
 			nabla_weights[i][j] = (double*)calloc(network->sizes[i], sizeof(double));
 	}
 
-	// Malloc memory
-	delta_nabla_biases = (double**)malloc(network->num_layers*sizeof(double*));
+	delta_nabla_biases = (double**)malloc(network->num_layers * sizeof(double*));
 	for(int i = 1; i < network->num_layers; i++)
-		delta_nabla_biases[i] = (double*)malloc(network->sizes[i]*sizeof(double));
+		delta_nabla_biases[i] = (double*)calloc(network->sizes[i], sizeof(double));
 
-	delta_nabla_weights = (double***)malloc(network->num_layers*sizeof(double**));
+	delta_nabla_weights = (double***)malloc(network->num_layers * sizeof(double**));
 	for(int i = 0; i < network->num_layers-1; i++){
-		delta_nabla_weights[i] = (double**)malloc(network->sizes[i+1]*sizeof(double*));
+		delta_nabla_weights[i] = (double**)malloc(network->sizes[i+1] * sizeof(double*));
 		for(int j = 0; j < network->sizes[i+1]; j++)
-			delta_nabla_weights[i][j] = (double*)malloc(network->sizes[i]*sizeof(double));
+			delta_nabla_weights[i][j] = (double*)calloc(network->sizes[i], sizeof(double));
 	}
 
 	// Increment nabla for each vector in mini_batch
@@ -266,25 +263,29 @@ void update_mini_batch(Network* network, double** mini_batch_input,
 
 		backPropagation(network, mini_batch_input[a], mini_batch_output[a], delta_nabla_biases, delta_nabla_weights);
 
-		for(int i = 1; i < network->num_layers; i++)
+		for(int i = 1; i < network->num_layers; i++){
 			for(int j = 0; j < network->sizes[i]; j++)
 				nabla_biases[i][j] += delta_nabla_biases[i][j];
+			memset(delta_nabla_biases[i], 0, network->sizes[i] * sizeof(double));
+		}
 		
 		for(int i = 0; i < network->num_layers-1; i++)
-			for(int j = 0; j < network->sizes[i+1]; j++)
+			for(int j = 0; j < network->sizes[i+1]; j++){
 				for(int k = 0; k < network->sizes[i]; k++)
 					nabla_weights[i][j][k] += delta_nabla_weights[i][j][k];
+				memset(delta_nabla_weights[i][j], 0, network->sizes[i] * sizeof(double));
+			}
 	}
 
 	// Update weights and biases from total nabla_biases and total nabla_weights
 	for(int i = 1; i < network->num_layers; i++)
 		for(int j = 0; j < network->sizes[i]; j++)
-			network->biases[i][j] -= delta_nabla_biases[i][j] * learning_rate / mini_batch_size;
+			network->biases[i][j] -= nabla_biases[i][j] * learning_rate / mini_batch_size;
 	
 	for(int i = 0; i < network->num_layers-1; i++)
 		for(int j = 0; j < network->sizes[i+1]; j++)
 			for(int k = 0; k < network->sizes[i]; k++)
-				network->weights[i][j][k] -= delta_nabla_weights[i][j][k] * learning_rate / mini_batch_size;
+				network->weights[i][j][k] -= nabla_weights[i][j][k] * learning_rate / mini_batch_size;
 
 	// Free the memory
 	for(int i = 1; i < network->num_layers; i++)
@@ -316,29 +317,19 @@ void update_mini_batch(Network* network, double** mini_batch_input,
 void backPropagation(Network* network, double* input, double* output,
 					double** delta_nabla_biases, double*** delta_nabla_weights){
 
-	for(int i = 1; i < network->num_layers; i++)
-		for(int j = 0; j < network->sizes[i]; j++)
-			delta_nabla_biases[i][j] = 0;
-	
-	for(int i = 0; i < network->num_layers-1; i++)
-		for(int j = 0; j < network->sizes[i+1]; j++)
-			for(int k = 0; k < network->sizes[i]; k++)
-				delta_nabla_weights[i][j][k] = 0;
-
 	double** activations;
 	double** z_values;
 
-	activations = (double**)calloc(network->num_layers, sizeof(double*));
+	activations = (double**)malloc(network->num_layers * sizeof(double*));
 	for(int i = 0; i < network->num_layers; i++)
-		activations[i] = (double*)calloc(network->sizes[i], sizeof(double));
+		activations[i] = (double*)malloc(network->sizes[i] * sizeof(double));
 
-	z_values = (double**)calloc(network->num_layers, sizeof(double*));
+	z_values = (double**)malloc(network->num_layers * sizeof(double*));
 	for(int i = 1; i < network->num_layers; i++)
 		z_values[i] = (double*)calloc(network->sizes[i], sizeof(double));
 
 	// Copy the input activations
-	for(int i = 0; i < network->sizes[0]; i++)
-		activations[0][i] = input[i];
+	memcpy(activations[0], input, network->sizes[0] * sizeof(double));
 
 	// Forward pass
 	int size_from, size_to;

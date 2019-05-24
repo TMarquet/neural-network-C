@@ -52,14 +52,7 @@ int main(){
 /***************************\
 *	TO DO LIST
 *
-* - Implement memset() where setting values to zero
-* - Set values to zero before doing matrix multiplications
-*
-* - Preallocate memory where malloc and calloc used over and over again
-* - Ensure all memory is free() where malloc or calloc used
-*
 * - Implement faster matrix multiplicaiton
-*
 *
 * - SGD()
 *		- Properly shuffle training data to have randomized mini-batches
