@@ -11,13 +11,13 @@ int main(){
 	srand(time(NULL));
 
 	// Load MNIST data
-	double** training_input;
-	double** training_output;
-	double** test_input;
-	double** test_output;
+	printf("Loading MNIST data...\n");
+	double **training_input, **training_output, **test_input, **test_output;
 	benchmarkLoadMNIST(&training_input, &training_output, &test_input, &test_output);
 
-	// Show that the import worked
+	return 0;
+
+	// Show that the MNIST load worked
 	showMNIST(training_input, training_output, 0);
 
 	// Prepare network

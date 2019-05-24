@@ -10,39 +10,31 @@ void loadMNIST(double*** training_input, double*** training_output, double*** te
 	unsigned char* training_labels = (unsigned char*)malloc(TRAIN_SIZE * sizeof(unsigned char));
 	unsigned char** training_images = (unsigned char**)malloc(TRAIN_SIZE * sizeof(unsigned char*));
 	for(int i = 0; i < TRAIN_SIZE; i++)
-		training_images[i] = (unsigned char*)malloc(784 * sizeof(unsigned char));
+		training_images[i] = (unsigned char*)malloc(IMAGE_SIZE * sizeof(unsigned char));
 
 	unsigned char* test_labels = (unsigned char*)malloc(TEST_SIZE * sizeof(unsigned char));
 	unsigned char** test_images = (unsigned char**)malloc(TEST_SIZE * sizeof(unsigned char*));
 	for(int i = 0; i < TEST_SIZE; i++)
-		test_images[i] = (unsigned char*)malloc(784 * sizeof(unsigned char));
-
-	// Header variables
-	unsigned int magic_number, num_images, num_rows, num_cols;
-	FILE* fptr;
+		test_images[i] = (unsigned char*)malloc(IMAGE_SIZE * sizeof(unsigned char));
 
 
 	// Load training labels
-	fptr = fopen(TRAINING_LABEL_NAME, "rb");
+	FILE* fptr = fopen(TRAINING_LABEL_NAME, "rb");
 
 	if (!fptr){
 		printf("Could not open %s.\n", TRAINING_LABEL_NAME);
-		training_labels = NULL;
-		training_images = NULL;
-		test_labels = NULL;
-		test_images = NULL;
+		(*training_input) = NULL;
+		(*training_output) = NULL;
+		(*test_input) = NULL;
+		(*test_output) = NULL;
 		return;
 	}
 
-	// Read header values
-	fread(&magic_number, 1, sizeof(unsigned int), fptr);
-	fread(&num_images, 1, sizeof(unsigned int), fptr);
-
-	// I have an Intel processor R.I.P.
-	num_images = __bswap_32(num_images);
+	// Skip header values
+	fseek(fptr, 8, SEEK_SET);
 
 	// Read labels
-	fread(training_labels, 1, num_images, fptr);
+	fread(training_labels, 1, TRAIN_SIZE, fptr);
 	fclose(fptr);
 
 
@@ -51,27 +43,19 @@ void loadMNIST(double*** training_input, double*** training_output, double*** te
 
 	if (!fptr){
 		printf("Could not open %s.\n", TRAINING_IMAGE_NAME);
-		training_labels = NULL;
-		training_images = NULL;
-		test_labels = NULL;
-		test_images = NULL;
+		(*training_input) = NULL;
+		(*training_output) = NULL;
+		(*test_input) = NULL;
+		(*test_output) = NULL;
 		return;
 	}
 
-	// Read header values
-	fread(&magic_number, 1, sizeof(unsigned int), fptr);
-	fread(&num_images, 1, sizeof(unsigned int), fptr);
-	fread(&num_rows, 1, sizeof(unsigned int), fptr);
-	fread(&num_cols, 1, sizeof(unsigned int), fptr);
-
-	// I have an Intel processor R.I.P.
-	num_images = __bswap_32(num_images);
-	num_rows = __bswap_32(num_rows);
-	num_cols = __bswap_32(num_cols);
+	// Skip header values
+	fseek(fptr, 16, SEEK_SET);
 
 	// Read images
-	for(int i = 0; i < num_images; i++)
-		fread(training_images[i], 1, num_rows*num_cols, fptr);
+	for(int i = 0; i < TRAIN_SIZE; i++)
+		fread(training_images[i], 1, IMAGE_SIZE, fptr);
 	fclose(fptr);
 
 
@@ -80,22 +64,18 @@ void loadMNIST(double*** training_input, double*** training_output, double*** te
 
 	if (!fptr){
 		printf("Could not open %s.\n", TEST_LABEL_NAME);
-		training_labels = NULL;
-		training_images = NULL;
-		test_labels = NULL;
-		test_images = NULL;
+		(*training_input) = NULL;
+		(*training_output) = NULL;
+		(*test_input) = NULL;
+		(*test_output) = NULL;
 		return;
 	}
 
-	// Read header values
-	fread(&magic_number, 1, sizeof(unsigned int), fptr);
-	fread(&num_images, 1, sizeof(unsigned int), fptr);
-
-	// I have an Intel processor R.I.P.
-	num_images = __bswap_32(num_images);
+	// Skip header values
+	fseek(fptr, 8, SEEK_SET);
 
 	// Read labels
-	fread(test_labels, 1, num_images, fptr);
+	fread(test_labels, 1, TEST_SIZE, fptr);
 	fclose(fptr);
 
 
@@ -104,53 +84,45 @@ void loadMNIST(double*** training_input, double*** training_output, double*** te
 
 	if (!fptr){
 		printf("Could not open %s.\n", TEST_IMAGE_NAME);
-		training_labels = NULL;
-		training_images = NULL;
-		test_labels = NULL;
-		test_images = NULL;
+		(*training_input) = NULL;
+		(*training_output) = NULL;
+		(*test_input) = NULL;
+		(*test_output) = NULL;
 		return;
 	}
 
-	// Read header values
-	fread(&magic_number, 1, sizeof(unsigned int), fptr);
-	fread(&num_images, 1, sizeof(unsigned int), fptr);
-	fread(&num_rows, 1, sizeof(unsigned int), fptr);
-	fread(&num_cols, 1, sizeof(unsigned int), fptr);
-
-	// I have an Intel processor R.I.P.
-	num_images = __bswap_32(num_images);
-	num_rows = __bswap_32(num_rows);
-	num_cols = __bswap_32(num_cols);
+	// Skip header values
+	fseek(fptr, 16, SEEK_SET);
 
 	// Read images
-	for(int i = 0; i < num_images; i++)
-		fread(test_images[i], 1, num_rows*num_cols, fptr);
+	for(int i = 0; i < TEST_SIZE; i++)
+		fread(test_images[i], 1, IMAGE_SIZE, fptr);
 	fclose(fptr);
 
 
 	// Convert char data to doubles
-	training_input[0] = (double**)malloc(TRAIN_SIZE * sizeof(double*));
-	training_output[0] = (double**)malloc(TRAIN_SIZE * sizeof(double*));
+	(*training_input) = (double**)malloc(TRAIN_SIZE * sizeof(double*));
+	(*training_output) = (double**)malloc(TRAIN_SIZE * sizeof(double*));
 	for(int i = 0; i < TRAIN_SIZE; i++){
 
-		training_input[0][i] = (double*)malloc(784 * sizeof(double));
-		for(int j = 0; j < 784; j++)
-			training_input[0][i][j] = (double)training_images[i][j] / 255.0;
+		(*training_input)[i] = (double*)malloc(IMAGE_SIZE * sizeof(double));
+		for(int j = 0; j < IMAGE_SIZE; j++)
+			(*training_input)[i][j] = (double)training_images[i][j] / 255.0;
 
-		training_output[0][i] = (double*)calloc(10, sizeof(double));
-		training_output[0][i][training_labels[i]] = 1;
+		(*training_output)[i] = (double*)calloc(OUTPUT_SIZE, sizeof(double));
+		(*training_output)[i][training_labels[i]] = 1;
 	}
 
-	test_input[0] = (double**)malloc(TEST_SIZE * sizeof(double*));
-	test_output[0] = (double**)malloc(TEST_SIZE * sizeof(double*));
+	(*test_input) = (double**)malloc(TEST_SIZE * sizeof(double*));
+	(*test_output) = (double**)malloc(TEST_SIZE * sizeof(double*));
 	for(int i = 0; i < TEST_SIZE; i++){
 
-		test_input[0][i] = (double*)malloc(784 * sizeof(double));
-		for(int j = 0; j < 784; j++)
-			test_input[0][i][j] = (double)test_images[i][j] / 255.0;
+		(*test_input)[i] = (double*)malloc(IMAGE_SIZE * sizeof(double));
+		for(int j = 0; j < IMAGE_SIZE; j++)
+			(*test_input)[i][j] = (double)test_images[i][j] / 255.0;
 
-		test_output[0][i] = (double*)calloc(10, sizeof(double));
-		test_output[0][i][test_labels[i]] = 1;
+		(*test_output)[i] = (double*)calloc(OUTPUT_SIZE, sizeof(double));
+		(*test_output)[i][test_labels[i]] = 1;
 	}
 
 	// Free the char memory
@@ -169,17 +141,17 @@ void loadMNIST(double*** training_input, double*** training_output, double*** te
 void freeMNIST(double*** training_input, double*** training_output, double*** test_input, double*** test_output){
 
 	for(int i = 0; i < TRAIN_SIZE; i++){
-		free(training_input[0][i]);
-		free(training_output[0][i]);
+		free((*training_input)[i]);
+		free((*training_output)[i]);
 	}
 	for(int i = 0; i < TEST_SIZE; i++){
-		free(test_input[0][i]);
-		free(test_output[0][i]);
+		free((*test_input)[i]);
+		free((*test_output)[i]);
 	}
-	free(training_input[0]);
-	free(training_output[0]);
-	free(test_input[0]);
-	free(test_output[0]);
+	free(*training_input);
+	free(*training_output);
+	free(*test_input);
+	free(*test_output);
 
 	return;
 }
@@ -221,6 +193,6 @@ void benchmarkLoadMNIST(double*** training_input, double*** training_output, dou
 	t = clock() - t; 
 	double time_taken = ((double)t)/CLOCKS_PER_SEC;
 	
-	printf("loadMNIST() took %lf seconds to execute \n", time_taken); 
+	printf("Load complete in %.2lf seconds.\n", time_taken); 
 	return;
 }
