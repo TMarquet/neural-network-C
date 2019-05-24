@@ -265,7 +265,7 @@ void update_mini_batch(Network* network, double** mini_batch_input,
 	// Increment nabla for each vector in mini_batch
 	for(int a = 0; a < mini_batch_size; a++){
 
-		backPropagation(network, mini_batch_input[a], mini_batch_output[a], &delta_nabla_biases, &delta_nabla_weights);
+		backPropagation(network, mini_batch_input[a], mini_batch_output[a], delta_nabla_biases, delta_nabla_weights);
 
 		for(int i = 1; i < network->num_layers; i++)
 			for(int j = 0; j < network->sizes[i]; j++)
@@ -315,16 +315,16 @@ void update_mini_batch(Network* network, double** mini_batch_input,
 
 // Determine the gradient of the NN
 void backPropagation(Network* network, double* input, double* output,
-					double*** delta_nabla_biases, double**** delta_nabla_weights){
+					double** delta_nabla_biases, double*** delta_nabla_weights){
 
 	for(int i = 1; i < network->num_layers; i++)
 		for(int j = 0; j < network->sizes[i]; j++)
-			delta_nabla_biases[0][i][j] = 0;
+			delta_nabla_biases[i][j] = 0;
 	
 	for(int i = 0; i < network->num_layers-1; i++)
 		for(int j = 0; j < network->sizes[i+1]; j++)
 			for(int k = 0; k < network->sizes[i]; k++)
-				delta_nabla_weights[0][i][j][k] = 0;
+				delta_nabla_weights[i][j][k] = 0;
 
 	double** activations;
 	double** z_values;
@@ -361,25 +361,25 @@ void backPropagation(Network* network, double* input, double* output,
 
 	// Backward pass
 	for(int j = 0; j < network->sizes[LAST]; j++)
-		delta_nabla_biases[0][LAST][j] = (activations[LAST][j] - output[j]) * sigmoidPrime(z_values[LAST][j]);
+		delta_nabla_biases[LAST][j] = (activations[LAST][j] - output[j]) * sigmoidPrime(z_values[LAST][j]);
 
 	for(int j = 0; j < network->sizes[LAST]; j++)
 		for(int k = 0; k < network->sizes[LAST-1]; k++)
-			delta_nabla_weights[0][LAST-1][j][k] = delta_nabla_biases[0][LAST][j] * activations[LAST-1][k];
+			delta_nabla_weights[LAST-1][j][k] = delta_nabla_biases[LAST][j] * activations[LAST-1][k];
 
 	// Loop backwards through layers
 	for(int i = 1; i < network->num_layers-1; i++){
 
 		for(int j = 0; j < network->sizes[LAST-i]; j++){
 			for(int k = 0; k < network->sizes[LAST-i+1]; k++)
-				delta_nabla_biases[0][LAST-i][j] += network->weights[LAST-i][k][j] * delta_nabla_biases[0][LAST-i+1][k];
+				delta_nabla_biases[LAST-i][j] += network->weights[LAST-i][k][j] * delta_nabla_biases[LAST-i+1][k];
 
-			delta_nabla_biases[0][LAST-i][j] *= sigmoidPrime(z_values[LAST-i][j]);
+			delta_nabla_biases[LAST-i][j] *= sigmoidPrime(z_values[LAST-i][j]);
 		}
 
 		for(int j = 0; j < network->sizes[LAST-i]; j++)
 			for(int k = 0; k < network->sizes[LAST-i-1]; k++)
-				delta_nabla_weights[0][LAST-i-1][j][k] = delta_nabla_biases[0][LAST-i][j] * activations[LAST-i-1][k];
+				delta_nabla_weights[LAST-i-1][j][k] = delta_nabla_biases[LAST-i][j] * activations[LAST-i-1][k];
 	}
 
 	// Free memory

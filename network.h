@@ -30,7 +30,7 @@ void stochasticGradientDescent(Network*, double**, double**, int, int, int, doub
 void update_mini_batch(Network*, double**, double**, int, double);
 
 // Determine the gradient of the NN
-void backPropagation(Network*, double*, double*, double***, double****);
+void backPropagation(Network*, double*, double*, double**, double***);
 
 // Test how well the NN does for given test data
 void evaluate(Network*, double**, double**, int);
