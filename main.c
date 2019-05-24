@@ -10,35 +10,15 @@ int main(){
 	// Random seed
 	srand(time(NULL));
 
-	// Load in training and test data
-	printf("Reading data...\n");
-
-	unsigned char* training_labels;
-	unsigned char** training_images;
-	unsigned char* test_labels;
-	unsigned char** test_images;
-
-	loadMNIST(&training_labels, &training_images, &test_labels, &test_images);
-
-	printf("Read complete.\n");
-
-	// Convert data to NN-friendly format
-	printf("Converting data...\n");
-
+	// Load MNIST data
 	double** training_input;
 	double** training_output;
 	double** test_input;
 	double** test_output;
-
-	convertMNIST(&training_labels, &training_images, &test_labels, &test_images,
-				&training_input, &training_output, &test_input, &test_output);
-
-	printf("Conversion complete.\n");
+	benchmarkLoadMNIST(&training_input, &training_output, &test_input, &test_output);
 
 	// Show that the import worked
-	showMNIST(training_input, training_output, 10);
-
-	return 0;
+	showMNIST(training_input, training_output, 0);
 
 	// Prepare network
 	int num_layers = 3;
@@ -74,7 +54,6 @@ int main(){
 /***************************\
 *	TO DO LIST
 *
-* - Make training data import cleaner?
 * - Implement memset() where setting values to zero
 * - Set values to zero before doing matrix multiplications
 * - Preallocate memory where malloc and calloc used over and over again
