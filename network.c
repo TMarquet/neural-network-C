@@ -189,13 +189,13 @@ void stochasticGradientDescent(Network* network, double** training_input, double
 
 	// Repeat process epoch times
 	for(int i = 0; i < epochs; i++){
-
+        printf("Epoch %d / %d\r", i+1, epochs);
 		int index = rand() % training_size;
 
 		// Number of minibatches per epoch
 		for(int j = 0; j < training_size/mini_batch_size; j++){
 
-			printf("Minibatch %d / %d\n", j+1, training_size/mini_batch_size);
+			
 
 			// Size of minibatch
 			for(int k = 0; k < mini_batch_size; k++){

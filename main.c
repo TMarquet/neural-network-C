@@ -32,8 +32,8 @@ int main(){
 
 	// Train the network
 	int training_size = 10000;		// 60_000 max size
-	int mini_batch_size = 10;
-	int epochs = 1;
+	int mini_batch_size = 100;
+	int epochs = 100;
 	double learning_rate = 3.0;
 
 	// Time the training process
